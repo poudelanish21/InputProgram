@@ -1,5 +1,5 @@
 #include <iostream>
-#include <chrono>
+#include <vector>
 void LogError(std::string Msg) {
 
 	std::cout << Msg << "\n";
@@ -85,8 +85,54 @@ class SOP_INPUT {
 
 public:
 
-	unsigned int* Array = new unsigned int[16];
-	unsigned int ArrayCounter = 0;
+	std::vector<unsigned int> vArray;
+	unsigned int BitsRequired = 0;
+	
+	/// <summary>
+	/// Can Be Optimized
+	/// Debug Mode Time Taken for 0 - 65536 => 203ms
+	/// Release Mode Time Taken for 0 - 65536 => 14ms
+	/// </summary>
+	/// <param name="">Send Unsigned Integer As Input But It Only Takes Into Account 31 Bits</param>
+	/// <returns></returns>
+	static std::string convertIntoBinaryString(unsigned int Number) {
+
+		std::string Output = "";
+
+		for (unsigned int i = 1; i < 31; i++) {
+
+			((Number >> (30 - i)) & 1) ? Output += '1' : Output += '0';
+
+		}
+
+		unsigned int Index = 0;
+
+		//Minimize
+		while (Output[Index] == '0' && !(Index > Output.size())) {
+
+			Index++;
+
+		}
+
+		std::string Temp = "";
+
+		for (unsigned int i = Index; i < Output.size(); i++) {
+
+			Temp += Output[i];
+
+		}
+
+		Output = Temp;
+
+		if (Output.size() == 0) {
+
+			Output = "0";
+
+		}
+
+		return Output;
+
+	}
 
 	static bool isANumber(char Character) {
 
@@ -123,50 +169,65 @@ public:
 
 	}
 
-	unsigned int* _convertToArray(std::string Input, unsigned int& NumberOfBitsRequired) {
+	unsigned int GetLargestInteger(std::vector<unsigned int> Input) {
 
-		unsigned int Size = Input.size();
+		unsigned int LargestNumber = 0;
 
-		char Operators[4] = { '}', '{', ';', ' ' };
+		for (unsigned int Index = 0; Index < Input.size(); Index++) {
 
-		bool Number = false;
-		
-		bool Stop;
+			if (Input[Index] > LargestNumber) {
 
-		char temp[9];
-		memset(temp, 0, 9);
-		unsigned int TempCounter = 0;
-
-		for (unsigned int Index = 0; Index < Size; Index++) {
-
-			Stop = false;
-
-			for (unsigned int OperatorIndex = 0; OperatorIndex < 4; OperatorIndex++) {
-
-				if(Input[Index] == Operators[OperatorIndex])
-					Stop = true;
-
-			}
-
-			if (!Stop) {
-
-				temp[TempCounter] = Input[Index];
-				TempCounter++;
-
-			}
-			else {
-
-				Array[ArrayCounter] = convertIntoNumber(temp);
-				ArrayCounter++;
-
-				TempCounter = 0;
-				memset(temp, 0, 9);
+				LargestNumber = Input[Index];
 
 			}
 
 		}
 
+		return LargestNumber;
+
 	}
+
+	std::vector<unsigned int>GetNumberArray(std::string Expression, unsigned int& BitsRequired) {
+
+		std::vector<unsigned int>Output;
+
+		std::vector<std::string>StringArray;
+
+		std::string Temporary = "";
+
+		for (unsigned int Index = 0; Index < Expression.size(); Index++) {
+
+			if (SOP_INPUT::isANumber(Expression[Index])) {
+
+				Temporary += Expression[Index];
+
+			}
+			else if (Expression[Index] == ',') {
+
+				StringArray.push_back(Temporary);
+				Temporary = "";
+
+			}
+
+		}
+
+		StringArray.push_back(Temporary);
+
+		for (unsigned int Index = 0; Index < StringArray.size(); Index++) {
+
+			Output.push_back(SOP_INPUT::convertIntoNumber(StringArray[Index]));
+
+		}
+
+		unsigned int LargestNumber = GetLargestInteger(Output);
+
+		BitsRequired = convertIntoBinaryString(LargestNumber).size();
+
+		return Output;
+
+	}
+
+	
 	SOP_INPUT(std::string Input = "") {
 
 		if (Input == "") {
@@ -177,9 +238,38 @@ public:
 
 		}
 
-		unsigned int NumberOfBitsRequired = 0;
+		vArray = GetNumberArray(Input, BitsRequired);
 
-		_convertToArray(Input, NumberOfBitsRequired);
+	}
+
+	unsigned int* GetBooleanArray() {
+
+		unsigned int Size = pow(2, BitsRequired);
+
+		unsigned int* Output = new unsigned int[Size];
+		memset(Output, 0, Size);
+
+		for (unsigned int Index = 0; Index < Size; Index++) {
+
+			for (unsigned int vArrayIndex = 0; vArrayIndex < vArray.size(); vArrayIndex++) {
+
+				if (Index == vArray[vArrayIndex]) {
+
+					Output[Index] = 1;
+
+				}
+
+			}
+
+			if (Output[Index] > 1) {
+
+				Output[Index] = 0;
+
+			}
+
+		}
+
+		return Output;
 
 	}
 
@@ -187,6 +277,16 @@ public:
 
 int main(int argc, char** argw) {
 
-	SOP_INPUT("{0,1,2,3,4,5,6,7};")
+	unsigned int BitsRequired = 0;
+
+	SOP_INPUT Obj = SOP_INPUT("{1,2,3,5,7,11,13,15};");
+
+	unsigned int* Output = Obj.GetBooleanArray();
+
+	for (unsigned int Index = 0; Index < pow(2, Obj.BitsRequired); Index++) {
+
+		std::cout << "Num : " << Index << " Binary : " << SOP_INPUT::convertIntoBinaryString(Index) << " Boolean : " << Output[Index] << "\n";
+
+	}
 	
 }
